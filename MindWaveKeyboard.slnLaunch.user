@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "Keyboard\\Mind Wave Keyboard.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
