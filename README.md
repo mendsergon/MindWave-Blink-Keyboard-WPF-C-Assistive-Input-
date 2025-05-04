@@ -1,5 +1,7 @@
+# Disclaimer
+This software is for research and educational purposes only.
 It is not affiliated with, endorsed by, or certified by NeuroSky, Inc.
-Users must obtain NeuroSky hardware and the ThinkGear Connector directly from NeuroSky.
+Users must obtain NeuroSky software and the ThinkGear Connector directly from NeuroSky.
 No proprietary NeuroSky software or SDK components are included in this repository.
 
 # Program Description
