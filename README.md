@@ -20,14 +20,15 @@ The application interprets blinks as input commands to select and "press" virtua
                     When a HIT is detected, the application invokes HandleHitDetected() to process it as an input event.
 
 3) Selection Phases: The core of the interface uses a two-phase scanning method to allow users to select a button.
-                     Phases: -Idle: The system waits passively for the user's first blink to start interaction.
+                     Phases:                                                                                                                                                                                                                                                                       
+                             -Idle: The system waits passively for the user's first blink to start interaction.                                                                                                                                                                                
                              -Horizontal: After the first blink, each subsequent blink moves the selection horizontally across the first row of the keyboard. If the last button is reached and the user blinks, the selection
-                              wraps to the start of the row. A countdown timer starts after each blink (resets after each blink). If no blink is detected within 5 seconds, the system switches to the vertical phase.
+                              wraps to the start of the row. A countdown timer starts after each blink (resets after each blink). If no blink is detected within 5 seconds, the system switches to the vertical phase.                                                                                  
                              -Vertical: The user now cycles vertically through the selected column. Now, each blink moves the selection downward. If the bottom button is reached and the user blinks, the selection wraps
-                              back to the top. The timer works the same way here, except that if it expires, the currently selected button is pressed.   
+                              back to the top. The timer works the same way here, except that if it expires, the currently selected button is pressed.                                                                                                                                                          
                              -Press & Reset: The selected button is programmatically "pressed". Afterwards, the system resets to the idle phase, ready for a new cycle.
 
-5) Timers: -A Threading Timer (clearTimer) is used to manage the switching between phases and button presses. 
+5) Timers: -A Threading Timer (clearTimer) is used to manage the switching between phases and button presses.                                                                                                                                                                           
            -A Dispatcher Timer (uiTimer) provides a visual countdown in the UI (TimerText) to show the user how much time remains to blink before the automatic phase switch.
 
 6) Button Color Update: The currently highlighted button is visually marked red, and previously selected buttons revert to their original color.
@@ -50,6 +51,6 @@ Safe multithreaded UI updates.
 Automatic fallback handling of malformed or missing EEG packets.
 
 # Considerations
-The default timer is set to 5 seconds. It can be adjusted in the code to better suit individual users' blink speed or preference.
-Currently, no explicit error handling for unexpected disconnection mid-session from the ThinkGear Connector (the app logs an error but does not auto-reconnect).
+The default timer is set to 5 seconds. It can be adjusted in the code to better suit individual users' blink speed or preference.                                                                                                                                                      
+Currently, no explicit error handling for unexpected disconnection mid-session from the ThinkGear Connector (the app logs an error but does not auto-reconnect).  
 By default, the program sends the composed text to the open Notepad application. This output can be modified in the code to direct the text to a different application.                  
