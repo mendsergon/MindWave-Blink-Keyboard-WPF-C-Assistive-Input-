@@ -81,7 +81,6 @@ This Windows WPF application provides a **hands-free virtual keyboard** that let
 | **blinkdata.cs**               | `BlinkData` model representing incoming JSON blink data.                                                  |
 | **MainWindow.xaml / .xaml.cs** | Main UI layout and `MainWindow` logic, timers, selection algorithm, button handlers, logging, send logic. |
 | **Resources.Designer.cs**      | Auto-generated resource accessor (e.g., embedded brain byte[]).                                           |
-| **README / Disclaimer**        | Usage guidance, research-only disclaimer, and ThinkGear dependency notes.                                 |
 
 ---
 
@@ -111,7 +110,7 @@ This Windows WPF application provides a **hands-free virtual keyboard** that let
 
 ### Considerations & Limitations
 
-* **Research/Educational Use Only** — not a certified medical device. See disclaimer.
+* **Research/Educational Use Only** — not a certified medical device. 
 * **ThinkGear Dependency** — user must obtain NeuroSky software and connector separately.
 * **No Auto-Reconnect** — on disconnection the app logs an error but does not attempt automatic reconnection.
 * **SendKeys Limitations** — `SendKeys` and window focusing are OS-level hacks; they can fail with certain elevated processes or sandboxed apps.
