@@ -1,56 +1,121 @@
-# Disclaimer
-This software is for research and educational purposes only.
-It is not affiliated with, endorsed by, or certified by NeuroSky, Inc.
-Users must obtain NeuroSky software and the ThinkGear Connector directly from NeuroSky.
-No proprietary NeuroSky software or SDK components are included in this repository.
+## MindWave Blink Keyboard (WPF C# Assistive Input)
 
-# Program Description
-This program is a Windows desktop application designed to provide an assistive virtual keyboard interface for individuals with Locked-in Syndrome.
-It enables users to compose messages using only intentional eye blinks, which are detected via a NeuroSky MindWave Mobile 2 EEG headset.
-The application interprets blinks as input commands to select and "press" virtual keyboard buttons through a two-step scanning process (horizontal and vertical selection).
+### Project Summary
 
-# System Components & Workflow
-1) Hardware & Communication Setup: The application connects to NeuroSky's ThinkGear Connector via a TCP/IP socket (127.0.0.1 : 13854).
-                                   Upon connection, the program sends a JSON configuration message to ensure that: - Raw EEG output is disabled.
-                                                                                                                   - The data format is JSON for easier parsing.
-                                   The system continuously listens for incoming JSON-formatted blink data.
+This Windows WPF application provides a **hands-free virtual keyboard** that lets users compose and send text using intentional eye blinks detected by a NeuroSky MindWave headset (via the ThinkGear Connector). The app connects to the connector over TCP, parses JSON blink data, and uses a two-phase scanning selection (horizontal → vertical) with timers to highlight and programmatically “press” virtual buttons. It includes UI feedback, logging, and a Notepad-targeted send feature.
 
-2) Blink Detection: Incoming TCP data packets are deserialized into a BlinkData object using Newtonsoft.Json.
-                    If a blink strength is detected and is ≥ 70, it is classified as a "HIT" (intentional blink). Weaker signals are ignored.
-                    When a HIT is detected, the application invokes HandleHitDetected() to process it as an input event.
+---
 
-3) Selection Phases: The core of the interface uses a two-phase scanning method to allow users to select a button.
-                     Phases:                                                                                                                                                                                                                                                                       
-                             -Idle: The system waits passively for the user's first blink to start interaction.                                                                                                                                                                                
-                             -Horizontal: After the first blink, each subsequent blink moves the selection horizontally across the first row of the keyboard. If the last button is reached and the user blinks, the selection
-                              wraps to the start of the row. A countdown timer starts after each blink (resets after each blink). If no blink is detected within 5 seconds, the system switches to the vertical phase.                                                                                  
-                             -Vertical: The user now cycles vertically through the selected column. Now, each blink moves the selection downward. If the bottom button is reached and the user blinks, the selection wraps
-                              back to the top. The timer works the same way here, except that if it expires, the currently selected button is pressed.                                                                                                                                                          
-                             -Press & Reset: The selected button is programmatically "pressed". Afterwards, the system resets to the idle phase, ready for a new cycle.
+### Core Features
 
-5) Timers: -A Threading Timer (clearTimer) is used to manage the switching between phases and button presses.                                                                                                                                                                           
-           -A Dispatcher Timer (uiTimer) provides a visual countdown in the UI (TimerText) to show the user how much time remains to blink before the automatic phase switch.
+* Real-time connection to **ThinkGear Connector** (127.0.0.1:13854) and JSON-based blink data parsing.
+* Two-phase scanning selection: **Horizontal** (cycle across row) → **Vertical** (cycle down column) → **Press**.
+* Blink classification: intentional blinks (strength ≥ 70) trigger selection actions.
+* Timers: a `System.Threading.Timer` controls phase transitions and action timeouts; a `DispatcherTimer` drives the visible countdown.
+* Visual feedback: highlighted buttons, countdown UI (`TimerText`), and a logging window (`LogOutput`).
+* Programmatic button activation: selected buttons are raised (`RaiseEvent`) to perform their action.
+* Send composed text to another application (default: Notepad) using `SetForegroundWindow` (P/Invoke) and `SendKeys`.
+* Robust UI marshalling using `Dispatcher.Invoke` for thread-safety.
+* JSON deserialization via **Newtonsoft.Json**; resources embedded via auto-generated `Resources.Designer.cs`.
+* Graceful fallback for malformed packets (logged, ignored).
 
-6) Button Color Update: The currently highlighted button is visually marked red, and previously selected buttons revert to their original color.
+---
 
-7) Thread Safety & UI Updates: All updates to the UI are wrapped in Dispatcher.Invoke() calls to ensure safe access from the background listener thread.
+### Key Methods and Algorithms
 
-# Summary of Interaction Flow
-1) User blinks once -> enters Horizontal selection.
-2) Each blink cycles through buttons horizontally (wraps row end).
-3) If no blink within 5 seconds -> switches to Vertical selection.
-4) Each blink cycles through buttons vertically through the selected column (wraps at column end).
-5) If no blink within 5 seconds -> selected button is pressed.
-6) System resets to Idle phase.
+* **TCP Listener & JSON Parsing**
 
-# Key Features
-Hands-free virtual keyboard navigation using EEG blink detection.
-Two-phase row/column scanning method.
-Visual countdown timer for user feedback.
-Safe multithreaded UI updates.
-Automatic fallback handling of malformed or missing EEG packets.
+  * Opens a `TcpClient` to ThinkGear Connector, writes a JSON config `{"enableRawOutput":false,"format":"Json"}`, then continuously reads the stream.
+  * Uses `JsonConvert.DeserializeObject<BlinkData>()` to extract `BlinkStrength`.
 
-# Considerations
-The default timer is set to 5 seconds. It can be adjusted in the code to better suit individual users' blink speed or preference.                                                                                                                                                      
-Currently, no explicit error handling for unexpected disconnection mid-session from the ThinkGear Connector (the app logs an error but does not auto-reconnect).  
-By default, the program sends the composed text to the open Notepad application. This output can be modified in the code to direct the text to a different application.                  
+* **Blink Event Handling**
+
+  * `HandleHitDetected()` runs on the UI thread (via `Dispatcher`) and:
+
+    * Starts/refreshes the selection timers.
+    * Moves selection horizontally or vertically depending on `SelectionPhase`.
+    * Updates visual state and logs actions.
+
+* **Two-Phase Scanning Logic**
+
+  * **Horizontal phase:** each blink advances selection across a row; timer resets after every blink. If timer expires → switch to vertical.
+  * **Vertical phase:** blinks move selection down the selected column; timer expiry triggers `PressButton()` (the selected button is programmatically clicked) and the system resets to Idle.
+  * Selection mapping uses index rules to map the UI grid to button names (e.g., `_11`, `_22`, etc.).
+
+* **Timers & UI Synchronization**
+
+  * `System.Threading.Timer clearTimer` (background) for selection timeouts and phase changes.
+  * `DispatcherTimer uiTimer` for a second-by-second countdown displayed to the user.
+  * All UI updates are marshalled with `Dispatcher.Invoke` to ensure thread-safety.
+
+* **Programmatic Input Forwarding**
+
+  * Uses `Process.GetProcesses()` to find a target window (default `"Notepad"`), `SetForegroundWindow` to focus it, then `SendKeys.SendWait` to paste the composed text and optionally send Enter.
+
+* **Resilience & Safety**
+
+  * Malformed or partial JSON packets are caught and ignored to prevent crashes.
+  * The app logs connection attempts, successes, errors, and disconnections.
+
+---
+
+### Skills Demonstrated
+
+* WPF application design and event-driven UI programming.
+* Multithreaded programming and safe UI-thread marshaling (`Dispatcher`).
+* TCP socket programming for real-time data streams.
+* JSON serialization/deserialization with **Newtonsoft.Json**.
+* P/Invoke (`user32.dll` / `SetForegroundWindow`) and inter-process input automation (`SendKeys`).
+* Designing accessible input methods and assistive interaction patterns (scanning keyboard).
+* Timers and state machine implementation for human-in-the-loop interfaces.
+* Resource management and integration of autogenerated resource code.
+
+---
+
+### File Overview
+
+| File Name                      | Description                                                                                               |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| **App.xaml.cs**                | WPF application entry/boot class.                                                                         |
+| **AssemblyInfo.cs**            | Assembly theme info and metadata.                                                                         |
+| **blinkdata.cs**               | `BlinkData` model representing incoming JSON blink data.                                                  |
+| **MainWindow.xaml / .xaml.cs** | Main UI layout and `MainWindow` logic, timers, selection algorithm, button handlers, logging, send logic. |
+| **Resources.Designer.cs**      | Auto-generated resource accessor (e.g., embedded brain byte[]).                                           |
+| **README / Disclaimer**        | Usage guidance, research-only disclaimer, and ThinkGear dependency notes.                                 |
+
+---
+
+### How to Build & Run
+
+1. **Prerequisites**
+
+   * Windows OS.
+   * Visual Studio (2017 or later) or MSBuild targeting .NET Framework 4.x.
+   * **ThinkGear Connector** (NeuroSky) installed and running, configured to expose JSON on `127.0.0.1:13854`.
+   * NuGet package: **Newtonsoft.Json**.
+
+2. **Open & Restore**
+
+   * Open the solution/project in Visual Studio and restore NuGet packages.
+
+3. **Run**
+
+   * Start the ThinkGear Connector, then launch the WPF app from Visual Studio (F5) or run the built `.exe`.
+   * The app logs connection attempts; when connected, blink the MindWave headset (intentional blinks ≥70) to interact.
+
+4. **Testing without Hardware**
+
+   * You may simulate incoming JSON by running a simple TCP server that sends lines like `{"BlinkStrength":80}` to port `13854`.
+
+---
+
+### Considerations & Limitations
+
+* **Research/Educational Use Only** — not a certified medical device. See disclaimer.
+* **ThinkGear Dependency** — user must obtain NeuroSky software and connector separately.
+* **No Auto-Reconnect** — on disconnection the app logs an error but does not attempt automatic reconnection.
+* **SendKeys Limitations** — `SendKeys` and window focusing are OS-level hacks; they can fail with certain elevated processes or sandboxed apps.
+* **Timing Parameters** — default 5s timer may need personalization for different users; expose as user setting if needed.
+* **Privacy & Security** — data transmitted over loopback only; still treat EEG-derived data sensitively.
+
+---
